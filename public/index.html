@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif !important;
+        }
+    </style>
+</head>
+
+<body style="margin: 0 0 0 0; background-color: #afaeab;">
+    <header
+        style="display:flex; justify-content: center; align-items: center; background-color: #00a884; width: 100%; height: 80px;">
+        <p style="color: white; font-size: 35px; font-weight: bold;">
+            ENVÍO DE MENSAJES MASIVOS WHATSAPP
+        </p>
+    </header>
+    <div id="contentContainer" style="margin-top: 5%; display: flex; justify-content: center; align-items: center;">
+        <!-- QR Container -->
+        <div id="qrContainer">
+            <div class="card" style="width: 50%; border-radius: 10px">
+                <div class="card-body" style="display: flex; justify-content: center; align-items: center;">
+                    <h2>Escanea el código QR para iniciar sesión en WhatsApp</h2>
+                    <img id="qrImage" class="card-img-top" src="" alt="QR Code" style="width: 45%; margin-left: 20%;">
+                    <p id="loadingMessage">Generando QR, por favor espera...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Upload Container -->
+        <div id="fileUploadContainer" style="display: none;">
+            <div class="container mt-5">
+                <h1 class="text-center mb-4">ENVIO DE MENSAJES WHATSAPP</h1>
+                <div class="card shadow">
+                    <div class="card-body">
+                        <form id="uploadForm">
+                            <!-- Campo para seleccionar archivo -->
+                            <div class="mb-3">
+                                <div style="margin-bottom: 20px;text-align: center;">
+                                    <p for="formFile" class="form-label" style="text-align: center;font-weight: bold; font-size: 25px;">Escriba la plantilla</p>
+                                    <textarea id="idPlantilla" style="width: 100%;height: 200px;"></textarea>
+                                </div>
+                                
+                                <input class="form-control" type="file" id="fileInput" accept=".xlsx, .xls"
+                                    onchange="processFile()">
+                            </div>
+                            <!-- Botón para subir archivo -->
+                            <div class="text-center">
+                                <button type="button"   class="btn btn-success" onclick="sendMessages()">Enviar Mensajes Masivos WhatsApp</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <!-- Mensaje de estado -->
+                <div id="uploadStatus" class="mt-3 text-center"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let messageData = [];
+
+        // Función para procesar el archivo Excel
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                const data = new Uint8Array(event.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const sheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+                // Transformar datos del Excel en un arreglo
+                messageData = json.slice(1).map(row => ({
+                    phone: row[0],     // Primera columna: Número de teléfono
+                    name: row[1],      // Segunda columna: Nombre
+                    message: "[replazarmensaje]"   // Tercera columna: Mensaje con [name]
+                }));
+
+                alert('Archivo procesado correctamente. Listo para enviar mensajes.');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Función para enviar los mensajes al servidor
+        async function sendMessages() {
+            const plantilla = document.getElementById('idPlantilla').value;
+            if (!messageData.length) {
+                alert('Por favor, sube un archivo Excel primero.');
+                return;
+            }
+
+            messageData = messageData.map(item => ({
+                ...item, // Copiar las propiedades existentes
+                message: plantilla// Agregar el nuevo valor al campo "message"
+            }));
+
+            const response = await fetch('/send-bulk-messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages: messageData }).replace("[replazarmensaje]",plantilla)
+            });
+
+            const result = await response.json();
+            alert(result.message);
+        }
+
+        // Función para cargar QR
+        async function loadQRCode() {
+            try {
+                const response = await fetch('/qr');
+                const data = await response.json();
+                document.getElementById('qrImage').src = data.qrCodeData;
+                document.getElementById('loadingMessage').style.display = 'none';
+            } catch (error) {
+                console.error('Error al cargar el QR:', error);
+            }
+        }
+
+        // Verifica si la sesión está lista
+        async function checkIfReady() {
+            const response = await fetch('/status');
+            const data = await response.json();
+            if (data.ready) {
+                document.getElementById('qrContainer').style.display = 'none';
+                document.getElementById('fileUploadContainer').style.display = 'block';
+            } else {
+                setTimeout(checkIfReady, 1000);
+            }
+        }
+
+        // Inicia las verificaciones de QR y estado
+        loadQRCode();
+        checkIfReady();
+    </script>
+</body>
+
+</html>
