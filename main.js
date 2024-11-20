@@ -4,6 +4,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const path = require('path');
 const app = express();
+const puppeteer = require('puppeteer-core');
 const client = new Client({
   authStrategy: new LocalAuth({
     dataPath: './sessions',
@@ -13,6 +14,18 @@ const client = new Client({
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   },
 });
+
+(async () => {
+  const browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/chromium',
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+  });
+
+  const page = await browser.newPage();
+  await page.goto('https://example.com');
+  console.log(await page.title());
+  await browser.close();
+})();
 
 let qrCodeData = null;
 let isReady = false;
@@ -75,7 +88,7 @@ app.post('/send-bulk-messages', async (req, res) => {
     res.json({ message: 'Mensajes enviados exitosamente' });
   } catch (error) {
     console.error('Error al enviar mensajes:', error);
-    res.status(500).json({ message: 'Error al enviar mensajes' });
+    // res.status(500).json({ message: 'Error al enviar mensajes' });
   }
 });
 

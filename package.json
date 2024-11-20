@@ -5,9 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node main.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "echo \"Construyendo el proyecto...\" && mkdir -p dist && cp -r . dist && echo \"Proyecto listo en la carpeta dist\""
-
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "SANTIAGO ALULEMA",
   "license": "ISC",

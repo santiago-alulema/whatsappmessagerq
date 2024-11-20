@@ -106,7 +106,7 @@
             messageData = messageData.map(item => ({
                 ...item, // Copiar las propiedades existentes
                 message: plantilla// Agregar el nuevo valor al campo "message"
-            }));
+            }));    
 
             const response = await fetch('/send-bulk-messages', {
                 method: 'POST',
